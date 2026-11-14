@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SkyQuest — English Grammar Flight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky-top:#0f6dd6;
+    --sky-mid:#3a9bea;
+    --sky-low:#8fd4ff;
+    --sun:#fff6cf;
+    --cloud-body:#ffffff;
+    --gold:#ffb648;
+    --gold-dark:#e8912a;
+    --green:#33b16a;
+    --green-dark:#1f8a51;
+    --coral:#f2593f;
+    --ink:#0d3a5c;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    font-family:'Nunito',sans-serif;
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none;
+  }
+  #stage{
+    position:relative;
+    width:100%; height:100vh; min-height:600px;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -6%, var(--sun) 0%, rgba(255,246,207,0) 60%),
+      linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 45%, var(--sky-low) 100%);
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .bg-cloud{ position:absolute; opacity:0.55; filter:blur(0.5px); animation: drift linear infinite; }
+  .bg-cloud svg{ width:100%; height:100%; display:block; }
+  @keyframes drift{ from{ transform:translateX(110vw); } to{ transform:translateX(-30vw); } }
+
+  .rays{
+    position:absolute; top:-10%; left:50%; width:1400px; height:1400px;
+    transform:translateX(-50%);
+    background:conic-gradient(from 0deg, rgba(255,255,255,0.10) 0deg, transparent 8deg,
+      transparent 20deg, rgba(255,255,255,0.08) 28deg, transparent 40deg,
+      transparent 52deg, rgba(255,255,255,0.10) 60deg, transparent 72deg,
+      transparent 84deg, rgba(255,255,255,0.07) 92deg, transparent 104deg);
+    animation: spin 90s linear infinite;
+    pointer-events:none;
+  }
+  @keyframes spin{ to{ transform:translateX(-50%) rotate(360deg); } }
+
+  #scene{ position:relative; width:100%; height:100%; max-width:1100px; }
+
+  /* ---------- pause button ---------- */
+  #pauseBtn{
+    position:absolute; top:22px; right:22px; z-index:50;
+    width:56px; height:56px; border-radius:50%;
+    border:1.5px solid rgba(255,255,255,0.55);
+    background:rgba(255,255,255,0.22);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    box-shadow:0 6px 18px rgba(8,40,70,0.28), inset 0 1px 1px rgba(255,255,255,0.6);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .15s ease, background .2s ease;
+  }
+  #pauseBtn:hover{ transform:scale(1.06); background:rgba(255,255,255,0.32); }
+  #pauseBtn:active{ transform:scale(0.94); }
+  #pauseBtn svg{ width:20px; height:20px; }
+
+  /* ---------- timer ring (top-left) ---------- */
+  #timerWrap{
+    position:absolute; top:18px; left:22px; z-index:50;
+    width:60px; height:60px; display:flex; align-items:center; justify-content:center;
+  }
+  #timerWrap svg{ position:absolute; top:0; left:0; width:100%; height:100%; transform:rotate(-90deg); }
+  #timerRingBg{ fill:none; stroke:rgba(255,255,255,0.25); stroke-width:5; }
+  #timerRingFg{
+    fill:none; stroke:var(--gold); stroke-width:5; stroke-linecap:round;
+    stroke-dasharray:157; stroke-dashoffset:0;
+    transition:stroke-dashoffset 1s linear, stroke .2s ease;
+  }
+  #timerRingFg.low{ stroke:var(--coral); }
+  #timerNum{
+    position:relative; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:19px;
+    color:#fff; text-shadow:0 2px 4px rgba(8,40,70,0.4);
+  }
+
+  /* ---------- pause overlay ---------- */
+  #pauseOverlay{
+    position:absolute; inset:0; z-index:40;
+    background:rgba(9,32,58,0.30); backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .25s ease;
+  }
+  #pauseOverlay.show{ opacity:1; pointer-events:auto; }
+  #pauseCard{
+    background:rgba(255,255,255,0.92); border-radius:26px; padding:28px 40px; text-align:center;
+    box-shadow:0 20px 50px rgba(8,40,70,0.35);
+  }
+  #pauseCard h2{ font-family:'Baloo 2',sans-serif; font-size:26px; color:var(--ink); margin:0 0 6px; }
+  #pauseCard p{ margin:0 0 16px; color:#3b6788; font-weight:700; font-size:14px; }
+  #resumeBtn{
+    font-family:'Baloo 2',sans-serif; font-size:17px; font-weight:700; color:#fff;
+    background:linear-gradient(180deg,#37c07c,var(--green-dark));
+    border:none; border-radius:50px; padding:11px 30px; cursor:pointer;
+    box-shadow:0 8px 18px rgba(31,138,81,0.4);
+  }
+
+  /* ---------- progress dots ---------- */
+  #progress{
+    position:absolute; top:26px; left:50%; transform:translateX(-50%); z-index:45;
+    display:flex; gap:7px;
+  }
+  #progress .dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.4); transition:background .2s ease, transform .2s ease; }
+  #progress .dot.done{ background:#fff; box-shadow:0 0 8px rgba(255,255,255,0.8); }
+  #progress .dot.active{ background:var(--gold); transform:scale(1.35); }
+
+  /* ---------- cloud layer (answers) ---------- */
+  #clouds{
+    position:absolute; top:9%; left:0; width:100%; height:24%;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 8%; z-index:5;
+  }
+  .cloud-wrap{
+    position:relative; width:25%; max-width:200px;
+    display:flex; flex-direction:column; align-items:center;
+    animation: bob 4.5s ease-in-out infinite;
+    cursor:pointer; transition:transform .18s ease;
+  }
+  .cloud-wrap:hover{ transform:translateY(-4px) scale(1.03); }
+  .cloud-wrap.paused{ animation-play-state:paused; }
+  .cloud-wrap.locked{ pointer-events:none; }
+
+  .cloud-svg{ width:100%; filter:drop-shadow(0 18px 20px rgba(20,60,95,0.25)); display:block; }
+
+  .cloud-label{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Baloo 2',sans-serif; font-weight:700;
+    font-size:clamp(10px,1.5vw,15px);
+    color:var(--ink);
+    text-align:center;
+    padding:0 22%;
+    line-height:1.15; letter-spacing:0.1px;
+  }
+  .cloud-tag{
+    position:absolute; top:2%; left:8%;
+    width:22px; height:22px; border-radius:50%;
+    background:linear-gradient(180deg,#ffd074,var(--gold-dark));
+    color:#7a4300; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:11px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 3px 8px rgba(120,70,0,0.35), inset 0 1px 1px rgba(255,255,255,0.6);
+  }
+  .check-badge{
+    position:absolute; top:0%; right:6%;
+    width:24px; height:24px; border-radius:50%;
+    background:var(--green); display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 14px rgba(31,138,81,0.5);
+    opacity:0; transform:scale(0.3);
+    transition:opacity .25s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
+  }
+  .check-badge svg{ width:13px; height:13px; }
+  .cloud-wrap.correct .check-badge{ opacity:1; transform:scale(1); }
+  .cloud-wrap.correct .cloud-svg{ filter:drop-shadow(0 0 26px rgba(51,177,106,0.85)) drop-shadow(0 18px 20px rgba(20,60,95,0.25)); }
+  .cloud-wrap.wrong{ animation:shake .45s ease; }
+  .cloud-wrap.wrong .cloud-svg{ filter:drop-shadow(0 0 22px rgba(242,89,63,0.75)) drop-shadow(0 18px 20px rgba(20,60,95,0.25)); }
+  .cloud-wrap.dim{ opacity:0.45; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-9px); } 40%{ transform:translateX(8px); }
+    60%{ transform:translateX(-6px); } 80%{ transform:translateX(4px); }
+  }
+  @keyframes bob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-10px); } }
+
+  /* ---------- banner above plane ---------- */
+  #bannerWrap{
+    position:absolute; left:50%; bottom:35%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center;
+    animation: bannerBob 3.2s ease-in-out infinite;
+    z-index:20;
+  }
+  #bannerWrap.paused{ animation-play-state:paused; }
+  @keyframes bannerBob{
+    0%,100%{ transform:translateX(-50%) translateY(0); }
+    50%{ transform:translateX(-50%) translateY(-6px); }
+  }
+  .banner{
+    position:relative;
+    background:linear-gradient(180deg,#ffffff,#eef6ff);
+    border-radius:16px; padding:12px 28px;
+    box-shadow:0 12px 22px rgba(10,45,80,0.28), inset 0 1px 0 rgba(255,255,255,0.9);
+    border:2px solid #d8e9fb;
+  }
+  .banner:before, .banner:after{
+    content:""; position:absolute; top:50%; width:34px; height:6px;
+    background:linear-gradient(90deg,#c9dcee,#e9f2fb); transform:translateY(-50%);
+  }
+  .banner:before{ left:-30px; border-radius:6px 0 0 6px; }
+  .banner:after{ right:-30px; border-radius:0 6px 6px 0; }
+  .banner-text{
+    font-family:'Baloo 2',sans-serif; font-weight:700; font-size:clamp(18px,2.6vw,26px);
+    color:var(--ink); white-space:nowrap;
+  }
+
+  /* ---------- airplane ---------- */
+  #planeWrap{
+    position:absolute; left:50%; bottom:4%; transform:translateX(-50%);
+    width:min(200px, 26vw);
+    animation: planeIdle 2.6s ease-in-out infinite;
+    z-index:10;
+  }
+  #planeWrap.paused{ animation-play-state:paused; }
+  @keyframes planeIdle{
+    0%,100%{ transform:translateX(-50%) translateY(0) rotate(0deg); }
+    50%{ transform:translateX(-50%) translateY(-7px) rotate(0.6deg); }
+  }
+  .plane-svg{ width:100%; display:block; filter:drop-shadow(0 22px 18px rgba(10,40,70,0.35)); transition:opacity .15s ease, transform .15s ease; }
+
+  .trail{
+    position:absolute; left:50%; bottom:-6px; transform:translateX(-50%);
+    width:70%; height:34px; border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(255,255,255,0.55), rgba(255,255,255,0));
+    filter:blur(4px); animation: trailPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes trailPulse{
+    0%,100%{ opacity:0.5; transform:translateX(-50%) scaleX(1); }
+    50%{ opacity:0.85; transform:translateX(-50%) scaleX(1.15); }
+  }
+
+  /* ---------- explosion ---------- */
+  #explosion{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:420px; height:420px; pointer-events:none;
+    opacity:0; z-index:16;
+  }
+  #explosion.play{ animation: boom 1.7s cubic-bezier(.16,.8,.24,1) forwards; }
+  @keyframes boom{
+    0%{ opacity:0; transform:translate(-50%,-50%) scale(0.1); }
+    8%{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+    38%{ opacity:1; transform:translate(-50%,-50%) scale(1.7); }
+    70%{ opacity:0.8; transform:translate(-50%,-50%) scale(2.15); }
+    100%{ opacity:0; transform:translate(-50%,-50%) scale(2.6); }
+  }
+  .shockwave{
+    position:absolute; left:50%; top:50%; width:20px; height:20px; border-radius:50%;
+    border:5px solid rgba(255,255,255,0.85);
+    transform:translate(-50%,-50%); opacity:0; pointer-events:none; z-index:17;
+  }
+  .shockwave.play{ animation: ringOut 1.3s cubic-bezier(.16,.8,.24,1) forwards; }
+  @keyframes ringOut{
+    0%{ opacity:0.95; width:16px; height:16px; border-width:7px; }
+    100%{ opacity:0; width:460px; height:460px; border-width:1px; }
+  }
+  #afterglow{
+    position:absolute; inset:0; z-index:14; pointer-events:none; opacity:0;
+    background:radial-gradient(circle at 50% 62%, rgba(255,132,54,0.55), rgba(255,132,54,0) 62%);
+  }
+  #afterglow.play{ animation: glowFade 1.7s ease-out forwards; }
+  @keyframes glowFade{
+    0%{ opacity:0; } 18%{ opacity:0.95; } 100%{ opacity:0; }
+  }
+  #debrisField{ position:absolute; inset:0; pointer-events:none; z-index:16; }
+  .debris{
+    position:absolute; left:50%; top:50%; border-radius:2px; opacity:0;
+    transform:translate(-50%,-50%);
+  }
+  .debris.play{ animation: flyDebris 1.5s cubic-bezier(.14,.72,.28,1) forwards; }
+  @keyframes flyDebris{
+    0%{ opacity:1; transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(1); }
+    70%{ opacity:1; }
+    100%{ opacity:0; transform:translate(-50%,-50%) translate(var(--tx), var(--ty)) rotate(var(--rot)) scale(0.3); }
+  }
+  #flash{
+    position:absolute; inset:0; background:#fff6de; opacity:0; pointer-events:none; z-index:80;
+  }
+  #flash.play{ animation:flashPop .5s ease-out forwards; }
+  @keyframes flashPop{
+    0%{ opacity:0.92; } 100%{ opacity:0; }
+  }
+  .shake-screen{ animation: screenShake 1s cubic-bezier(.36,.07,.19,.97); }
+  @keyframes screenShake{
+    0%{ transform:translate(0,0) scale(1); }
+    6%{ transform:translate(-12px,-8px) scale(1.05); }
+    14%{ transform:translate(11px,7px) scale(1.04); }
+    24%{ transform:translate(-13px,6px) scale(1.03); }
+    34%{ transform:translate(12px,-6px) scale(1.02); }
+    46%{ transform:translate(-8px,7px) scale(1.015); }
+    58%{ transform:translate(8px,-7px) scale(1.01); }
+    70%{ transform:translate(-5px,3px) scale(1.005); }
+    82%{ transform:translate(4px,-2px) scale(1.0); }
+    92%{ transform:translate(-2px,1px) scale(1.0); }
+    100%{ transform:translate(0,0) scale(1); }
+  }
+  .exploding .plane-svg{ opacity:0; transform:scale(0.6); }
+  .respawn .plane-svg{ animation: respawnIn .5s ease-out; }
+  @keyframes respawnIn{
+    0%{ opacity:0; transform:translateY(50px) scale(0.5); }
+    100%{ opacity:1; transform:translateY(0) scale(1); }
+  }
+
+  /* fly-through transition */
+  .flying #planeWrap{ animation:flyForward .9s ease-in forwards; }
+  @keyframes flyForward{
+    0%{ transform:translateX(-50%) translateY(0) scale(1); }
+    100%{ transform:translateX(-50%) translateY(-140px) scale(0.35); opacity:0; }
+  }
+  .flying #bannerWrap{ transition:opacity .35s ease; opacity:0; }
+  .flying #clouds{ transition:opacity .4s ease .25s; opacity:0; }
+
+  .entering #planeWrap{ animation:flyIn .55s ease-out; }
+  @keyframes flyIn{
+    0%{ transform:translateX(-50%) translateY(60px) scale(0.7); opacity:0; }
+    100%{ transform:translateX(-50%) translateY(0) scale(1); opacity:1; }
+  }
+  .entering #bannerWrap, .entering #clouds{ animation:fadeUp .5s ease .1s both; }
+  @keyframes fadeUp{ 0%{ opacity:0; transform:translateY(10px); } 100%{ opacity:1; transform:translateY(0); } }
+
+  /* ---------- completion screen ---------- */
+  #doneScreen{
+    position:absolute; inset:0; z-index:60; display:none;
+    align-items:center; justify-content:center; flex-direction:column; text-align:center;
+  }
+  #doneScreen.show{ display:flex; }
+  #doneScreen h1{
+    font-family:'Baloo 2',sans-serif; color:#fff; font-size:clamp(28px,5vw,44px);
+    margin:0 0 8px; text-shadow:0 6px 16px rgba(8,40,70,0.4);
+  }
+  #doneScreen p{ color:rgba(255,255,255,0.9); font-weight:700; margin:0 0 22px; }
+  #restartBtn{
+    font-family:'Baloo 2',sans-serif; font-size:18px; font-weight:700; color:#7a4300;
+    background:linear-gradient(180deg,#ffe19a,var(--gold));
+    border:none; border-radius:50px; padding:13px 34px; cursor:pointer;
+    box-shadow:0 10px 22px rgba(120,70,0,0.35);
+  }
+  #restartBtn:active{ transform:scale(0.96); }
+
+  @media (max-width:640px){
+    #clouds{ top:8%; height:22%; padding:0 6%; }
+    .cloud-label{ font-size:clamp(9px,2.6vw,13px); }
+    #bannerWrap{ bottom:32%; }
+    #planeWrap{ bottom:4%; width:34vw; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.001s !important; animation-iteration-count:1 !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div class="rays"></div>
+
+  <div id="scene">
+
+    <div class="bg-cloud" style="top:8%; width:180px; height:90px; animation-duration:38s;">
+      <svg viewBox="0 0 200 100"><path d="M20,80 Q0,80 0,60 Q0,40 25,40 Q28,15 55,15 Q80,15 85,35 Q110,30 115,50 Q135,50 135,68 Q135,80 115,80 Z" fill="#ffffff"/></svg>
+    </div>
+    <div class="bg-cloud" style="top:20%; width:130px; height:65px; animation-duration:52s; animation-delay:-14s;">
+      <svg viewBox="0 0 200 100"><path d="M20,80 Q0,80 0,60 Q0,40 25,40 Q28,15 55,15 Q80,15 85,35 Q110,30 115,50 Q135,50 135,68 Q135,80 115,80 Z" fill="#ffffff"/></svg>
+    </div>
+    <div class="bg-cloud" style="top:64%; width:220px; height:110px; animation-duration:46s; animation-delay:-30s;">
+      <svg viewBox="0 0 200 100"><path d="M20,80 Q0,80 0,60 Q0,40 25,40 Q28,15 55,15 Q80,15 85,35 Q110,30 115,50 Q135,50 135,68 Q135,80 115,80 Z" fill="#ffffff"/></svg>
+    </div>
+
+    <div id="progress"></div>
+
+    <div id="timerWrap">
+      <svg viewBox="0 0 60 60">
+        <circle id="timerRingBg" cx="30" cy="30" r="25"/>
+        <circle id="timerRingFg" cx="30" cy="30" r="25"/>
+      </svg>
+      <div id="timerNum">10</div>
+    </div>
+
+    <div id="pauseBtn" aria-label="Pause">
+      <svg id="pauseIcon" viewBox="0 0 24 24" fill="none">
+        <rect x="6" y="5" width="4" height="14" rx="1.5" fill="#0d3a5c"/>
+        <rect x="14" y="5" width="4" height="14" rx="1.5" fill="#0d3a5c"/>
+      </svg>
+    </div>
+
+    <div id="game">
+      <div id="clouds"></div>
+
+      <div id="bannerWrap">
+        <div class="banner"><div class="banner-text" id="bannerText">get up</div></div>
+      </div>
+
+      <div id="planeWrap">
+        <div class="trail"></div>
+        <svg class="plane-svg" viewBox="0 0 240 260" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="fuselage" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#e7edf3"/><stop offset="45%" stop-color="#ffffff"/>
+              <stop offset="55%" stop-color="#ffffff"/><stop offset="100%" stop-color="#c3ceda"/>
+            </linearGradient>
+            <linearGradient id="wing" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f2f5f8"/><stop offset="100%" stop-color="#b9c6d4"/>
+            </linearGradient>
+            <linearGradient id="redAccent" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ff6a52"/><stop offset="100%" stop-color="#d63f2c"/>
+            </linearGradient>
+            <radialGradient id="cockpit" cx="0.5" cy="0.3" r="0.8">
+              <stop offset="0%" stop-color="#dff3ff"/><stop offset="60%" stop-color="#8fd0f0"/><stop offset="100%" stop-color="#4a97c4"/>
+            </radialGradient>
+          </defs>
+          <ellipse cx="52" cy="188" rx="16" ry="24" fill="#9fb0c0"/>
+          <ellipse cx="52" cy="180" rx="12" ry="15" fill="#e9eef3"/>
+          <ellipse cx="188" cy="188" rx="16" ry="24" fill="#9fb0c0"/>
+          <ellipse cx="188" cy="180" rx="12" ry="15" fill="#e9eef3"/>
+          <path d="M120,150 L18,205 Q10,212 20,218 L120,190 Z" fill="url(#wing)" stroke="#9fb0c0" stroke-width="1"/>
+          <path d="M120,150 L222,205 Q230,212 220,218 L120,190 Z" fill="url(#wing)" stroke="#9fb0c0" stroke-width="1"/>
+          <path d="M18,205 L20,218 L34,214 Z" fill="url(#redAccent)"/>
+          <path d="M222,205 L220,218 L206,214 Z" fill="url(#redAccent)"/>
+          <path d="M105,60 Q120,10 135,60 Z" fill="url(#redAccent)"/>
+          <path d="M112,60 Q120,30 128,60 Z" fill="#ffffff" opacity="0.6"/>
+          <path d="M120,95 L78,120 Q73,124 80,127 L120,110 Z" fill="url(#wing)"/>
+          <path d="M120,95 L162,120 Q167,124 160,127 L120,110 Z" fill="url(#wing)"/>
+          <path d="M120,55 Q150,70 150,140 Q150,190 130,235 Q120,250 110,235 Q90,190 90,140 Q90,70 120,55 Z" fill="url(#fuselage)" stroke="#c3ceda" stroke-width="1.5"/>
+          <path d="M120,58 L120,232" stroke="#ffffff" stroke-width="2" opacity="0.7"/>
+          <path d="M108,120 Q120,124 132,120 L134,150 Q120,155 106,150 Z" fill="url(#redAccent)"/>
+          <ellipse cx="120" cy="92" rx="19" ry="14" fill="url(#cockpit)" stroke="#2c6d92" stroke-width="1.5"/>
+          <path d="M107,86 Q120,80 133,86" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.7"/>
+          <ellipse cx="120" cy="230" rx="9" ry="5" fill="#8fa0b2"/>
+        </svg>
+
+        <svg id="explosion" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="boomCore" cx="0.5" cy="0.5" r="0.5">
+              <stop offset="0%" stop-color="#fff6cf"/>
+              <stop offset="35%" stop-color="#ffd25c"/>
+              <stop offset="65%" stop-color="#ff8a3d"/>
+              <stop offset="100%" stop-color="#e8492b" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <circle cx="110" cy="110" r="95" fill="url(#boomCore)"/>
+          <g fill="#ffefc2">
+            <circle cx="60" cy="70" r="7"/><circle cx="150" cy="60" r="6"/>
+            <circle cx="170" cy="120" r="8"/><circle cx="55" cy="140" r="6"/>
+            <circle cx="110" cy="35" r="6"/><circle cx="120" cy="175" r="7"/>
+          </g>
+        </svg>
+        <div class="shockwave" id="shockwave"></div>
+        <div id="debrisField"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="flash"></div>
+  <div id="afterglow"></div>
+
+  <div id="pauseOverlay">
+    <div id="pauseCard">
+      <h2>Paused</h2>
+      <p>Your flight is on hold</p>
+      <button id="resumeBtn">Resume Flight</button>
+    </div>
+  </div>
+
+  <div id="doneScreen">
+    <h1>Great flying! 🎉</h1>
+    <p>You completed every cloud in the sky.</p>
+    <button id="restartBtn">Fly Again</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const screens = [
+    { banner:"get up", options:["gets ups","gets up","getes up"], correct:1 },
+    { banner:"get dressed", options:["getes dressed","gets dressed","gets dresseds"], correct:1 },
+    { banner:"have breakfast", options:["has breakfast","haves breakfast","has breakfasts"], correct:0 },
+    { banner:"brush your teeth", options:["brushs your teeth","brushes your teeth","brushes yours teeths"], correct:1 },
+    { banner:"go to school", options:["gos to schools","goes to school","goes toes school"], correct:1 },
+    { banner:"have lunch", options:["havs lunch","haves lunch","has lunch"], correct:2 },
+    { banner:"play in the park", options:["plays in the park","play in the parks","playes in the park"], correct:0 },
+    { banner:"have dinner", options:["has dinner","haves dinners","havs dinner"], correct:0 },
+    { banner:"go to bed", options:["gos to bed","go to bed","goes to bed"], correct:2 },
+  ];
+
+  const TIME_LIMIT = 10;
+  let current = 0;
+  let paused = false;
+  let locked = false;
+  let timeLeft = TIME_LIMIT;
+  let timerId = null;
+
+  const scene = document.getElementById('scene');
+  const cloudsEl = document.getElementById('clouds');
+  const bannerText = document.getElementById('bannerText');
+  const progressEl = document.getElementById('progress');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const pauseOverlay = document.getElementById('pauseOverlay');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const doneScreen = document.getElementById('doneScreen');
+  const restartBtn = document.getElementById('restartBtn');
+  const planeWrap = document.getElementById('planeWrap');
+  const bannerWrap = document.getElementById('bannerWrap');
+  const explosionEl = document.getElementById('explosion');
+  const shockwaveEl = document.getElementById('shockwave');
+  const debrisField = document.getElementById('debrisField');
+  const flashEl = document.getElementById('flash');
+  const afterglowEl = document.getElementById('afterglow');
+  const timerRingFg = document.getElementById('timerRingFg');
+  const timerNum = document.getElementById('timerNum');
+  const RING_LEN = 157;
+
+  const cloudSVG = `
+    <svg class="cloud-svg" viewBox="0 0 320 190" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="100%" stop-color="#dbe9f7"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="90" cy="130" rx="70" ry="46" fill="url(#cg)"/>
+      <ellipse cx="150" cy="90" rx="80" ry="58" fill="url(#cg)"/>
+      <ellipse cx="225" cy="120" rx="65" ry="48" fill="url(#cg)"/>
+      <ellipse cx="120" cy="150" rx="90" ry="40" fill="url(#cg)"/>
+      <ellipse cx="200" cy="150" rx="90" ry="40" fill="url(#cg)"/>
+    </svg>`;
+
+  function buildProgress(){
+    progressEl.innerHTML = screens.map((_,i)=>`<div class="dot" data-i="${i}"></div>`).join('');
+  }
+  function updateProgress(){
+    [...progressEl.children].forEach((d,i)=>{
+      d.classList.toggle('active', i===current);
+      d.classList.toggle('done', i<current);
+    });
+  }
+
+  function renderScreen(){
+    const s = screens[current];
+    bannerText.textContent = s.banner;
+    cloudsEl.innerHTML = '';
+    const letters = ['A','B','C'];
+    s.options.forEach((opt,i)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'cloud-wrap' + (paused ? ' paused' : '');
+      wrap.dataset.index = i;
+      wrap.innerHTML = cloudSVG +
+        `<div class="cloud-tag">${letters[i]}</div>` +
+        `<div class="cloud-label">${opt}</div>` +
+        `<div class="check-badge"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>`;
+      wrap.addEventListener('click', () => handleAnswer(i, wrap));
+      cloudsEl.appendChild(wrap);
+    });
+    updateProgress();
+    locked = false;
+    resetTimer();
+  }
+
+  function resetTimer(){
+    clearInterval(timerId);
+    timeLeft = TIME_LIMIT;
+    timerNum.textContent = timeLeft;
+    timerRingFg.style.transition = 'none';
+    timerRingFg.style.strokeDashoffset = 0;
+    timerRingFg.classList.remove('low');
+    requestAnimationFrame(()=>{ timerRingFg.style.transition = 'stroke-dashoffset 1s linear, stroke .2s ease'; });
+    if (!paused) startTimerTick();
+  }
+
+  function startTimerTick(){
+    clearInterval(timerId);
+    timerId = setInterval(()=>{
+      if (paused || locked) return;
+      timeLeft--;
+      timerNum.textContent = Math.max(timeLeft,0);
+      const offset = RING_LEN * (1 - timeLeft / TIME_LIMIT);
+      timerRingFg.style.strokeDashoffset = offset;
+      if (timeLeft <= 3) timerRingFg.classList.add('low');
+      if (timeLeft <= 0){
+        clearInterval(timerId);
+        timeUp();
+      }
+    }, 1000);
+  }
+
+  function timeUp(){
+    if (locked) return;
+    locked = true;
+    const allClouds = [...cloudsEl.children];
+    allClouds.forEach(c => c.classList.add('locked'));
+    crashPlane();
+  }
+
+  function handleAnswer(i, wrap){
+    if (paused || locked) return;
+    locked = true;
+    clearInterval(timerId);
+    const s = screens[current];
+    const allClouds = [...cloudsEl.children];
+    allClouds.forEach(c => c.classList.add('locked'));
+
+    if (i === s.correct){
+      wrap.classList.add('correct');
+      allClouds.forEach(c => { if(c!==wrap) c.classList.add('dim'); });
+      setTimeout(advance, 950);
+    } else {
+      wrap.classList.add('wrong');
+      setTimeout(()=> wrap.classList.remove('wrong'), 500);
+      crashPlane();
+    }
+  }
+
+  const DEBRIS_COLORS = ['#8fa0b2','#c3ceda','#d63f2c','#ffb648','#5b6b7a','#ffffff'];
+
+  function spawnDebris(){
+    debrisField.innerHTML = '';
+    const count = 16;
+    for (let i=0; i<count; i++){
+      const d = document.createElement('div');
+      d.className = 'debris';
+      const angle = (Math.PI * 2 * i / count) + (Math.random()*0.6 - 0.3);
+      const dist = 130 + Math.random()*220;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist - 50;
+      const rot = (Math.random()*900 - 450) + 'deg';
+      const size = 6 + Math.random()*11;
+      d.style.setProperty('--tx', tx.toFixed(0)+'px');
+      d.style.setProperty('--ty', ty.toFixed(0)+'px');
+      d.style.setProperty('--rot', rot);
+      d.style.width = size+'px';
+      d.style.height = (size*0.6)+'px';
+      d.style.background = DEBRIS_COLORS[i % DEBRIS_COLORS.length];
+      d.style.animationDelay = (Math.random()*0.12)+'s';
+      debrisField.appendChild(d);
+    }
+    requestAnimationFrame(()=>{
+      [...debrisField.children].forEach(d => d.classList.add('play'));
+    });
+  }
+
+  function crashPlane(){
+    planeWrap.classList.add('exploding');
+
+    scene.classList.remove('shake-screen');
+    void scene.offsetWidth;
+    scene.classList.add('shake-screen');
+
+    flashEl.classList.remove('play');
+    void flashEl.offsetWidth;
+    flashEl.classList.add('play');
+
+    afterglowEl.classList.remove('play');
+    void afterglowEl.offsetWidth;
+    afterglowEl.classList.add('play');
+
+    explosionEl.classList.remove('play');
+    void explosionEl.offsetWidth;
+    explosionEl.classList.add('play');
+
+    shockwaveEl.classList.remove('play');
+    void shockwaveEl.offsetWidth;
+    shockwaveEl.classList.add('play');
+
+    spawnDebris();
+
+    setTimeout(()=>{
+      const allClouds = [...cloudsEl.children];
+      allClouds.forEach(c => c.classList.remove('locked','dim'));
+      planeWrap.classList.remove('exploding');
+      planeWrap.classList.add('respawn');
+      setTimeout(()=> planeWrap.classList.remove('respawn'), 550);
+      locked = false;
+      resetTimer();
+    }, 1900);
+  }
+
+  function advance(){
+    clearInterval(timerId);
+    scene.classList.add('flying');
+    setTimeout(()=>{
+      current++;
+      scene.classList.remove('flying');
+      if (current >= screens.length){
+        doneScreen.classList.add('show');
+        return;
+      }
+      renderScreen();
+      scene.classList.add('entering');
+      setTimeout(()=> scene.classList.remove('entering'), 600);
+    }, 750);
+  }
+
+  function setPaused(p){
+    paused = p;
+    planeWrap.classList.toggle('paused', p);
+    bannerWrap.classList.toggle('paused', p);
+    [...cloudsEl.children].forEach(c => c.classList.toggle('paused', p));
+    pauseOverlay.classList.toggle('show', p);
+    if (p){ clearInterval(timerId); }
+    else if (!locked){ startTimerTick(); }
+  }
+
+  pauseBtn.addEventListener('click', ()=> setPaused(!paused));
+  resumeBtn.addEventListener('click', ()=> setPaused(false));
+  restartBtn.addEventListener('click', ()=>{
+    current = 0;
+    doneScreen.classList.remove('show');
+    renderScreen();
+  });
+
+  buildProgress();
+  renderScreen();
+})();
+</script>
+
+</body>
+</html>
